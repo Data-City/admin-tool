@@ -1,0 +1,31 @@
+//Input:
+{
+     "connections":
+     [
+         {"_id": 123456, "start": "A", "Ziel": "B", "Gewichtung": 8},
+         {"_id": 687786, "start": "A", "Ziel": "C", "Gewichtung": 7},
+         {"_id": 423423, "start": "B", "Ziel": "C", "Gewichtung": 5},
+         {"_id": 241232, "start": "C", "Ziel": "A", "Gewichtung": 6},
+         {"_id": 984949, "start": "A", "Ziel": "D", "Gewichtung": 55}
+     ]
+ }
+ 
+
+//Output:
+{ 
+    "connections": {
+        "A": [
+            {"B":8},
+            {"C":7},
+            {"D":55}
+        ],
+        "B": [
+            {"C":5}
+        ],
+        "C":[ 
+            {"A":6}
+        ],
+        "D": [
+        ]
+    }
+}
