@@ -30,9 +30,9 @@ module.exports = function(grunt) {
 		
 		//Prüfen, ob die Dateien richtig sind
 		if (!grunt.file.isFile(file1)) {
-			grunt.log.writeln().error("Die Datei mit den Gebäudeinformationen wurden nicht richtig eingetragen!");
+			grunt.log.error("Die Datei mit den Gebäudeinformationen wurden nicht richtig eingetragen!");
 		} else if (!grunt.file.isFile(file1)) {
-			grunt.log.writeln().error("Die Datei mit den Verbindungen der Gebäuden wurde nicht richtig eingetragen!");	
+			grunt.log.error("Die Datei mit den Verbindungen der Gebäuden wurde nicht richtig eingetragen!");	
 		} else {
 			
 			//grunt.file.isFile(path1 [, path2 [, ...]])
@@ -55,6 +55,7 @@ module.exports = function(grunt) {
 
 	});
 	
+	//Dies ist nur eine Beispielfunktion
 	grunt.registerTask('foo', 'A sample task that logs stuff.', function(arg1, arg2) {
 	  if (arguments.length === 0) {
 		grunt.log.writeln(this.name + ", no args");
