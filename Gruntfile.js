@@ -10,7 +10,8 @@ var MONGO_PASS = "6cn7Hd8RGzrseqmB";
 var DB = "prelife";
 
 var MongoClient = require('mongodb').MongoClient
-    , assert = require('assert');
+    , assert = require('assert'),
+    co = require('co');
 
 var URL = 'mongodb://' + MONGO_HOST + ':' + MONGO_PORT + '/' + DB;
 
@@ -20,7 +21,28 @@ Lösung für falsche $max Ergebnisse:
 db.Beispieldatensatz.aggregate([{"$group":{"_id":0, "max_Klassen": {"$max": {"$cond": [{"$eq":["$Klassen", ""]}, 0, "$Klassen"]} } }}])
 */
 
-var connect = function (fn) {
+
+/**
+ * Ruft die übergebene Funktion fn auf und übergibt ihr die erhaltene Collection als Parameter
+ * 
+ * Um den Verbindungsaufbau muss sich nicht gekümmert werden.
+ */
+var getCollection = function (db, collectionName) {
+    var ret = null;
+    db.collection(collectionName, function (err, collection) {
+        if (err) {
+            console.error('Fehler beim Holen der Collection ' + collectionName);
+            console.error(err);
+            return false;
+        } else {
+            ret = collection;
+        }
+    });
+    return ret;
+}
+
+var getDb = function () {
+    var database;
     MongoClient.connect(URL, function (err, db) {
         if (err) {
             console.error("Fehler bei Verbindungsaufbau zu" + URL);
@@ -30,19 +52,17 @@ var connect = function (fn) {
             // Authenticate
             db.authenticate(MONGO_USER, MONGO_PASS).then(function (result) {
                 //test.equal(true, result);
-                if (fn) {
-                    fn(db);
-                    db.close();
-                } else {
-                    console.log("Keine Funktion. Schließe Verbindung");
-                    db.close();
-                }
+                //fn(db);
+                //closeDB(db);
+                database = db;
+                return db;
             }, function (error) {
                 console.error("Fehler bei Authentifizierung:");
                 console.error(error);
             });
         }
     });
+    return database;
 };
 
 module.exports = function (grunt) {
@@ -111,21 +131,53 @@ module.exports = function (grunt) {
             return false;
         } else {
             var done = this.async();
-            connect(function (db) {
-                db.collection(collectionName, function (err, collection) {
-                    if(err) {
-                        grunt.log.error('Fehler beim Holen der Collection ' + collectionName);
-                        grunt.log.error(err);
-                        return false;
-                    } else {
-                        // AGGREGATION durchführen
-                    }
-                    /*
-                    collection.aggregate('[{"$group":{"_id":0, "max_Klassen": {"$max": {"$cond": [{"$eq":["$Klassen", ""]}, 0, "$Klassen"]} } }}]', null, function(err, resp) {
-                        console.log(resp);
+            MongoClient.connect(URL, function (err, db) {
+                if (err) {
+                    grunt.error.writeln("Fehler bei Verbindungsaufbau:" + URL);
+                    grunt.error.writeln(err);
+                    db.close();
+                } else {
+                    db.authenticate(MONGO_USER, MONGO_PASS, function (e) {
+                        if (err) {
+                            console.error("Fehler bei Authentifizierung:");
+                            console.error(e);
+                            db.close();
+                        } else {
+                            db.collection(collectionName, null, function (errorGetDB, collection) {
+                                if (errorGetDB) {
+                                    console.error("Fehler beim Holen der Datenbank " + collectionName);
+                                    console.error(errorGetDB);
+                                    db.close();
+                                } else {
+                                    collection.findOne({}, {}, function (errorGetDoc, doc) {
+                                        if (errorGetDoc) {
+                                            console.error("Fehler beim Holen eines Dokuments");
+                                            console.error(errorGetDoc);
+                                            db.close();
+                                        } else {
+                                            if (!doc) {
+                                                console.error("Keine Dokumente in Collection gefunden!");
+                                                console.error(errorGetDoc);
+                                                db.close();
+                                                return;
+                                            } else {
+                                                var attrs = [];
+                                                for (var attr in doc) {
+                                                    if (attr[0] !== '_') {
+                                                        attrs.push(attr);
+                                                    }
+                                                }
+                                                console.log(attrs);
+                                                db.close();
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+
+                        }
                     });
-                    */
-                });
+                }
             });
         }
     });

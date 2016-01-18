@@ -4,6 +4,7 @@
   "description": "this admin-tool should allow import, aggregating meta data etc",
   "main": "Gruntfile.js",
   "dependencies": {
+    "co": "^4.6.0",
     "grunt": "^0.4.5",
     "mongodb": "^2.1.4"
   },
