@@ -9,6 +9,10 @@ var MONGO_PASS = "6cn7Hd8RGzrseqmB";
 // Datenbank mit Datensätzen
 var DB = "prelife";
 
+var META_DATA_AGGR_URI = "maxminavg";
+var META_DATA_PART = "_dc_";
+
+
 var MongoClient = require('mongodb').MongoClient
     , assert = require('assert'),
     co = require('co');
@@ -161,14 +165,55 @@ module.exports = function (grunt) {
                                                 db.close();
                                                 return;
                                             } else {
+                                                // Die Namen aller Attribute in attrs
                                                 var attrs = [];
                                                 for (var attr in doc) {
                                                     if (attr[0] !== '_') {
                                                         attrs.push(attr);
                                                     }
                                                 }
-                                                console.log(attrs);
-                                                db.close();
+                                                
+                                                // Aggregation erstellen
+                                                var stages = [{
+                                                    "$group": {}
+                                                }];
+                                                var ops = {
+                                                    "_id": 0,
+                                                };
+                                                attrs.forEach(function (name) {
+
+                                                    var max = "max_" + name;
+                                                    var min = "min_" + name;
+                                                    var avg = "avg_" + name;
+
+                                                    ops[max] = {
+                                                        // Leere Felder werden von der MongoDB als Strings interpretiert
+                                                        // Leere Strings sind länger als Zahlen
+                                                        // => Maximum ohne diese Konstruktion ist ''
+                                                        "$max": { "$cond": [{"$eq":["$" + name, ""]}, 0, "$" + name] }
+                                                    };
+                                                    ops[min] = {
+                                                        "$min": "$" + name
+                                                    };
+                                                    ops[avg] = {
+                                                        "$avg": "$" + name
+                                                    };
+                                                });
+                                                stages[0].$group = ops;
+                                                var outputCollection = collectionName + META_DATA_PART + META_DATA_AGGR_URI;
+                                                stages.push({ "$out": outputCollection});
+                                                
+                                                // Aggregation ausführen
+                                                collection.aggregate(stages, function (errorAggregation, result) {
+                                                    if (errorGetDoc) {
+                                                        console.error("Fehler beim Aggregieren");
+                                                        console.error(errorAggregation);
+                                                        db.close();
+                                                    } else {
+                                                        grunt.log.writeln("Aggregation erfolgreich");
+                                                        db.close();
+                                                    }
+                                                });
                                             }
                                         }
                                     });
