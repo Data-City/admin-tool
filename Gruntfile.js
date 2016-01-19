@@ -11,6 +11,7 @@ var DROP_EXISTING_COLLECTIONS = true;
 // Datenbank mit Datensätzen
 var DB = "prelife";
 
+var TMP_CONNECTIONS_SUFFIX = "connections_tmp";
 var META_DATA_AGGR_URI = "maxminavg";
 var META_DATA_PART = "_dc_";
 
@@ -20,6 +21,33 @@ var MongoClient = require('mongodb').MongoClient
     shell = require('shelljs');;
 
 var URL = 'mongodb://' + MONGO_HOST + ':' + MONGO_PORT + '/' + DB;
+
+
+var importCsvFile = function (filename, collectionName) {
+    var importCmd = 'mongoimport --host ' + MONGO_HOST + ':' + MONGO_PORT +
+        ' --db ' + DB +
+        ' --collection ' + collectionName +
+        ' --type csv --headerline --file ' + filename +
+        ' --authenticationDatabase ' + MONGO_AUTH_DB +
+        ' --username ' + MONGO_USER +
+        ' --password ' + MONGO_PASS + ' -v';
+    if (DROP_EXISTING_COLLECTIONS) {
+        importCmd += ' --drop';
+    }
+    //console.log("Import-Befehl: " + importCmd);    
+    var importCsv = shell.exec(importCmd);
+
+    if (importCsv.code !== 0) {
+        console.error("Es ist ein Fehler aufgetreten:");
+        console.error("Code: " + importCsv.code);
+        console.error("Output:");
+        console.error(importCsv.output);
+        return false;
+    }
+}
+
+
+
 
 module.exports = function (grunt) {
 
@@ -63,31 +91,19 @@ module.exports = function (grunt) {
         if (connections_csv && !grunt.file.isFile(connections_csv)) {
             grunt.log.error("Die Datei mit den Verbindungen der Gebäuden wurde nicht gefunden! Falscher Pfad?");
             return false;
-        } 
-        
-        // Dateien importieren
-        var importCmd = 'mongoimport --host ' +  MONGO_HOST + ':' + MONGO_PORT + 
-                        ' --db ' + DB + 
-                        ' --collection ' + collectionName + 
-                        ' --type csv --headerline --file ' + data_csv + 
-                        ' --authenticationDatabase ' + MONGO_AUTH_DB + 
-                        ' --username ' + MONGO_USER + 
-                        ' --password ' + MONGO_PASS + ' -v';
-        if(DROP_EXISTING_COLLECTIONS) {
-            importCmd += ' --drop';
         }
-        grunt.log.writeln("Import-Befehl: " + importCmd);    
-        var importCsv = shell.exec(importCmd);
+
+        // Datei importieren - Daten
+        importCsvFile(data_csv, collectionName);
         
-        if(importCsv.code !== 0) {
-            grunt.log.error("Es ist ein Fehler aufgetreten:");
-            grunt.log.error("Code: " + importCsv.code);
-            grunt.log.error("Output:");
-            grunt.log.error(importCsv.output);
-            return false;
+        // Datei importieren - Verbindungsdaten
+        if (connections_csv) {
+            importCsvFile(connections_csv, collectionName + META_DATA_PART + TMP_CONNECTIONS_SUFFIX);
         }
+        
         // Meta Daten aggregieren
-        
+        grunt.task.run('metadata:' + collectionName);
+                
         // Verbindungsdaten aufbereiten
     });
     
@@ -104,8 +120,8 @@ module.exports = function (grunt) {
             var done = this.async();
             MongoClient.connect(URL, function (err, db) {
                 if (err) {
-                    grunt.error.writeln("Fehler bei Verbindungsaufbau:" + URL);
-                    grunt.error.writeln(err);
+                    grunt.log.error("Fehler bei Verbindungsaufbau:" + URL);
+                    grunt.log.error(err);
                     db.close();
                 } else {
                     db.authenticate(MONGO_USER, MONGO_PASS, function (e) {
