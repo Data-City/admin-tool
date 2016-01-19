@@ -11,18 +11,88 @@ var DROP_EXISTING_COLLECTIONS = true;
 // Datenbank mit Datensätzen
 var DB = "prelife";
 
+
+// Ab hier muss wahrscheinlich nichts mehr angepasst werden
 var TMP_CONNECTIONS_SUFFIX = "connections_tmp";
+var CONNECTIONS_SUFFIX = "connections";
 var META_DATA_AGGR_URI = "maxminavg";
 var META_DATA_PART = "_dc_";
 
-
+// Ab hier sollte definitiv nichts mehr angepasst werden
 var MongoClient = require('mongodb').MongoClient
     , assert = require('assert'),
     shell = require('shelljs');;
 
 var URL = 'mongodb://' + MONGO_HOST + ':' + MONGO_PORT + '/' + DB;
 
+/**
+ * Bereitet temporäre Verbindungsdaten auf
+ * 
+ * Baut u.a. einen Rahmen um Einträge, sodass REST-Limit von max 1000 ausgelieferten
+ * Dokumenten umgangen wird
+ */
+var prepareConnections = function (collectionName) {
+    MongoClient.connect(URL, function (err, db) {
+        if (err) {
+            console.error("Fehler bei Verbindungsaufbau:" + URL);
+            console.error(err);
+            db.close();
+        } else {
+            db.authenticate(MONGO_USER, MONGO_PASS, function (e) {
+                if (err) {
+                    console.error("Fehler bei Authentifizierung:");
+                    console.error(e);
+                    db.close();
+                } else {
+                    db.collection(collectionName + META_DATA_PART + TMP_CONNECTIONS_SUFFIX, null, function (errorGetDB, collection) {
+                        if (errorGetDB) {
+                            console.error("Fehler beim Holen der Datenbank " + collectionName);
+                            console.error(errorGetDB);
+                            db.close();
+                        } else {
+                            // Stages definieren
+                            var stages = [
+                                {
+                                    $group: {
+                                        _id: 0,
+                                        connections: {
+                                            $addToSet: {
+                                                "Start": "$Start",
+                                                "Ziel": "$Ziel",
+                                                "Gewichtung": "$Gewichtung"
+                                            }
+                                        },
+                                    }
+                                },
+                                {
+                                    $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX
+                                }
+                            ];
+                            // Aggregation ausführen
+                            collection.aggregate(stages, function (errorAggregation, result) {
+                                if (errorAggregation) {
+                                    console.error("Fehler beim Aggregieren");
+                                    console.error(errorAggregation);
+                                    db.close();
+                                } else {
+                                    console.log("Verbindungen erfolgreich aufbereitet!");
+                                    db.close();
+                                }
+                            });
+                        }
 
+                    });
+                }
+            });
+
+        }
+    });
+};
+
+
+/**
+ * Importiert CSV-Datei (filename) in Collection (collectionName)
+ */
 var importCsvFile = function (filename, collectionName) {
     var importCmd = 'mongoimport --host ' + MONGO_HOST + ':' + MONGO_PORT +
         ' --db ' + DB +
@@ -50,28 +120,12 @@ var importCsvFile = function (filename, collectionName) {
 
 
 module.exports = function (grunt) {
-
-    grunt.initConfig({
-        mongobackup: {
-            dump: {
-                options: {
-                    host: 'localhost',
-                    out: './dumps/mongo'
-                }
-            },
-            restore: {
-                options: {
-                    host: 'localhost',
-                    drop: true,
-                    path: './dumps/mongo/testdb'
-                }
-            }
-        }
-    });
-
-    grunt.loadNpmTasks('mongobackup');
-
-    grunt.registerTask('import', 'Importiert csv-Dateien', function (data_csv, collectionName, connections_csv) {
+    /**
+     * Grunt Task: import
+     * 
+     * Importiert CSV-Dateien zur Darstellung der Häuser und Verbindungen, bereitet sie auf und sammelt Meta-Daten
+     */
+    grunt.registerTask('import', 'Importiert CSV-Dateien und bereitet sie auf', function (data_csv, collectionName, connections_csv) {
         if (!data_csv || !collectionName) {
             grunt.log.error("Nötige Parameter fehlen! Aufruf mit");
             grunt.log.error("grunt import:Daten.csv:NameDerCollection:Verbindungen.csv");
@@ -99,12 +153,12 @@ module.exports = function (grunt) {
         // Datei importieren - Verbindungsdaten
         if (connections_csv) {
             importCsvFile(connections_csv, collectionName + META_DATA_PART + TMP_CONNECTIONS_SUFFIX);
+            // Verbindungsdaten aufbereiten
+            prepareConnections(collectionName);
         }
         
         // Meta Daten aggregieren
         grunt.task.run('metadata:' + collectionName);
-                
-        // Verbindungsdaten aufbereiten
     });
     
     /**
@@ -188,7 +242,7 @@ module.exports = function (grunt) {
                                                 
                                                 // Aggregation ausführen
                                                 collection.aggregate(stages, function (errorAggregation, result) {
-                                                    if (errorGetDoc) {
+                                                    if (errorAggregation) {
                                                         console.error("Fehler beim Aggregieren");
                                                         console.error(errorAggregation);
                                                         db.close();
@@ -207,15 +261,6 @@ module.exports = function (grunt) {
                     });
                 }
             });
-        }
-    });
-	
-    //Dies ist nur eine Beispielfunktion
-    grunt.registerTask('foo', 'A sample task that logs stuff.', function (arg1, arg2) {
-        if (arguments.length === 0) {
-            grunt.log.writeln(this.name + ", no args");
-        } else {
-            grunt.log.writeln(this.name + ", " + arg1 + " " + arg2);
         }
     });
 };
