@@ -6,7 +6,8 @@
   "dependencies": {
     "co": "^4.6.0",
     "grunt": "^0.4.5",
-    "mongodb": "^2.1.4"
+    "mongodb": "^2.1.4",
+    "shelljs": "^0.5.3"
   },
   "devDependencies": {
     "mongobackup": "^0.1.8"

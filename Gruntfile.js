@@ -6,6 +6,8 @@ var MONGO_HOST = "pegenau.com";
 var MONGO_PORT = "16391";
 var MONGO_USER = "mongoduser";
 var MONGO_PASS = "6cn7Hd8RGzrseqmB";
+var MONGO_AUTH_DB = "admin";
+var DROP_EXISTING_COLLECTIONS = true;
 // Datenbank mit Datensätzen
 var DB = "prelife";
 
@@ -15,59 +17,9 @@ var META_DATA_PART = "_dc_";
 
 var MongoClient = require('mongodb').MongoClient
     , assert = require('assert'),
-    co = require('co');
+    shell = require('shelljs');;
 
 var URL = 'mongodb://' + MONGO_HOST + ':' + MONGO_PORT + '/' + DB;
-
-/*
-Lösung für falsche $max Ergebnisse:
-(leere) Strings sind größer als Zahlen
-db.Beispieldatensatz.aggregate([{"$group":{"_id":0, "max_Klassen": {"$max": {"$cond": [{"$eq":["$Klassen", ""]}, 0, "$Klassen"]} } }}])
-*/
-
-
-/**
- * Ruft die übergebene Funktion fn auf und übergibt ihr die erhaltene Collection als Parameter
- * 
- * Um den Verbindungsaufbau muss sich nicht gekümmert werden.
- */
-var getCollection = function (db, collectionName) {
-    var ret = null;
-    db.collection(collectionName, function (err, collection) {
-        if (err) {
-            console.error('Fehler beim Holen der Collection ' + collectionName);
-            console.error(err);
-            return false;
-        } else {
-            ret = collection;
-        }
-    });
-    return ret;
-}
-
-var getDb = function () {
-    var database;
-    MongoClient.connect(URL, function (err, db) {
-        if (err) {
-            console.error("Fehler bei Verbindungsaufbau zu" + URL);
-            console.error(err);
-            return false;
-        } else {
-            // Authenticate
-            db.authenticate(MONGO_USER, MONGO_PASS).then(function (result) {
-                //test.equal(true, result);
-                //fn(db);
-                //closeDB(db);
-                database = db;
-                return db;
-            }, function (error) {
-                console.error("Fehler bei Authentifizierung:");
-                console.error(error);
-            });
-        }
-    });
-    return database;
-};
 
 module.exports = function (grunt) {
 
@@ -91,37 +43,52 @@ module.exports = function (grunt) {
 
     grunt.loadNpmTasks('mongobackup');
 
-    grunt.registerTask('import', 'Importiert csv-Dateien', function (file1, name, file2) {
-		
-        //grunt.log.writeln(file1);
-        //grunt.log.writeln(name);
-        //grunt.log.writeln(file2);
-		
-        //Prüfen, ob die Dateien richtig sind
-        if (!grunt.file.isFile(file1)) {
-            grunt.log.error("Die Datei mit den Gebäudeinformationen wurden nicht richtig eingetragen!");
-        } else if (!grunt.file.isFile(file1)) {
-            grunt.log.error("Die Datei mit den Verbindungen der Gebäuden wurde nicht richtig eingetragen!");
-        } else {
-			
-            //grunt.file.isFile(path1 [, path2 [, ...]])
-
-            //grunt.file.read(filepath [, options])
-            var file = grunt.file.read(file1);
-            //var file = grunt.file.read('Beispieldatei.csv');
-            //grunt.log.write(file);
-            //var connections = grunt.file.read('Beispieldatei_Verbindungen.csv');
-            var connections = grunt.file.read(file2);
-            //grunt.log.write(connections);
-			
-			/*
-			grunt.task.run([
-				'mongobackup:dump',
-			]);
-			*/
+    grunt.registerTask('import', 'Importiert csv-Dateien', function (data_csv, collectionName, connections_csv) {
+        if (!data_csv || !collectionName) {
+            grunt.log.error("Nötige Parameter fehlen! Aufruf mit");
+            grunt.log.error("grunt import:Daten.csv:NameDerCollection:Verbindungen.csv");
+            grunt.log.error("Daten.csv\t\tKomma-separierte Datei mit den zu visualisierenden Daten");
+            grunt.log.error("NameDerCollection\tName der Collection in die importiert werden soll");
+            grunt.log.error("Verbindungen.csv\tOPTIONAL: Komma-separierte Datei mit Verbindungsdaten");
+            return false;
         }
-
-
+        
+        //Prüfen, ob Input-CSV existiert
+        if (!grunt.file.isFile(data_csv)) {
+            grunt.log.error("Datei mit zu visualisierenden Daten (Gebaeudeinformationen) wurde nicht gefunden!");
+            return false;
+        } 
+        
+        // Falls angegeben sollte auch die CSV-Datei mit den Verbindungen passen
+        if (connections_csv && !grunt.file.isFile(connections_csv)) {
+            grunt.log.error("Die Datei mit den Verbindungen der Gebäuden wurde nicht gefunden! Falscher Pfad?");
+            return false;
+        } 
+        
+        // Dateien importieren
+        var importCmd = 'mongoimport --host ' +  MONGO_HOST + ':' + MONGO_PORT + 
+                        ' --db ' + DB + 
+                        ' --collection ' + collectionName + 
+                        ' --type csv --headerline --file ' + data_csv + 
+                        ' --authenticationDatabase ' + MONGO_AUTH_DB + 
+                        ' --username ' + MONGO_USER + 
+                        ' --password ' + MONGO_PASS + ' -v';
+        if(DROP_EXISTING_COLLECTIONS) {
+            importCmd += ' --drop';
+        }
+        grunt.log.writeln("Import-Befehl: " + importCmd);    
+        var importCsv = shell.exec(importCmd);
+        
+        if(importCsv.code !== 0) {
+            grunt.log.error("Es ist ein Fehler aufgetreten:");
+            grunt.log.error("Code: " + importCsv.code);
+            grunt.log.error("Output:");
+            grunt.log.error(importCsv.output);
+            return false;
+        }
+        // Meta Daten aggregieren
+        
+        // Verbindungsdaten aufbereiten
     });
     
     /**
@@ -190,7 +157,7 @@ module.exports = function (grunt) {
                                                         // Leere Felder werden von der MongoDB als Strings interpretiert
                                                         // Leere Strings sind länger als Zahlen
                                                         // => Maximum ohne diese Konstruktion ist ''
-                                                        "$max": { "$cond": [{"$eq":["$" + name, ""]}, 0, "$" + name] }
+                                                        "$max": { "$cond": [{ "$eq": ["$" + name, ""] }, 0, "$" + name] }
                                                     };
                                                     ops[min] = {
                                                         "$min": "$" + name
@@ -201,7 +168,7 @@ module.exports = function (grunt) {
                                                 });
                                                 stages[0].$group = ops;
                                                 var outputCollection = collectionName + META_DATA_PART + META_DATA_AGGR_URI;
-                                                stages.push({ "$out": outputCollection});
+                                                stages.push({ "$out": outputCollection });
                                                 
                                                 // Aggregation ausführen
                                                 collection.aggregate(stages, function (errorAggregation, result) {
