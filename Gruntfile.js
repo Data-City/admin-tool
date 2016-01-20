@@ -15,6 +15,8 @@ var DB = "prelife";
 // Ab hier muss wahrscheinlich nichts mehr angepasst werden
 var TMP_CONNECTIONS_SUFFIX = "connections_tmp";
 var CONNECTIONS_SUFFIX = "connections";
+var OUTGOING_SUFFIX = "_outgoing";
+var INCOMING_SUFFIX = "_incoming";
 var META_DATA_AGGR_URI = "maxminavg";
 var META_DATA_PART = "_dc_";
 
@@ -25,6 +27,7 @@ var MongoClient = require('mongodb').MongoClient
 
 var URL = 'mongodb://' + MONGO_HOST + ':' + MONGO_PORT + '/' + DB;
 
+    
 /**
  * Bereitet temporäre Verbindungsdaten auf
  * 
@@ -51,41 +54,91 @@ var prepareConnections = function (collectionName) {
                             db.close();
                         } else {
                             // Stages definieren
-                            var stages = [
+                            var outgoingStages = [
                                 {
                                     $group: {
-                                        _id: 0,
-                                        connections: {
+                                        _id: "$Start",
+                                        outgoingConnections: {
                                             $addToSet: {
-                                                "Start": "$Start",
-                                                "Ziel": "$Ziel",
-                                                "Gewichtung": "$Gewichtung"
+                                                Ziel: "$Ziel",
+                                                Gewichtung: "$Gewichtung"
                                             }
                                         },
+                                        Gewichtung: {
+                                            $sum: "$Gewichtung"
+                                        }
+                                    },
+                                }, {
+                                    $group: {
+                                        _id: "Outgoing Connections",
+                                        connections: {
+                                            $addToSet: {
+                                                Start: "$_id",
+                                                outgoingConnections: "$outgoingConnections",
+                                                Gewichtung: "$Gewichtung"
+                                            }
+                                        }
                                     }
-                                },
-                                {
-                                    $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX
+                                }, {
+                                    $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + OUTGOING_SUFFIX
                                 }
                             ];
+
+                            var incomingStages = [
+                                {
+                                    $group: {
+                                        _id: "$Ziel",
+                                        incomingConnections: {
+                                            $addToSet: {
+                                                Start: "$Start",
+                                                Gewichtung: "$Gewichtung"
+                                            }
+                                        },
+                                        Gewichtung: {
+                                            $sum: "$Gewichtung"
+                                        }
+                                    },
+                                }, {
+                                    $group: {
+                                        _id: "Incoming Connections",
+                                        connections: {
+                                            $addToSet: {
+                                                Ziel: "$_id",
+                                                incomingConnections: "$incomingConnections",
+                                                Gewichtung: "$Gewichtung"
+                                            }
+                                        }
+                                    }
+                                }, {
+                                    $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + INCOMING_SUFFIX
+                                }
+                            ];
+                            
                             // Aggregation ausführen
-                            collection.aggregate(stages, function (errorAggregation, result) {
+                            collection.aggregate(incomingStages, function (errorAggregation, result) {
                                 if (errorAggregation) {
-                                    console.error("Fehler beim Aggregieren");
+                                    console.error("Fehler beim Aggregieren der Verbindungsdaten (incoming)");
                                     console.error(errorAggregation);
                                     db.close();
                                 } else {
-                                    console.log("Verbindungen erfolgreich aufbereitet!");
-                                    db.close();
+                                    console.log("Verbindungen (incoming) erfolgreich aufbereitet!");
+                                    collection.aggregate(outgoingStages, function (errorAggregation, result) {
+                                        if (errorAggregation) {
+                                            console.error("Fehler beim Aggregieren der Verbindungsdaten (outgoing)");
+                                            console.error(errorAggregation);
+                                            db.close();
+                                        } else {
+                                            console.log("Verbindungen (outgoing) erfolgreich aufbereitet!");
+                                            db.close();
+                                        }
+                                    });
                                 }
                             });
-                        }
-
-                    });
-                }
-            });
-
+                    }
+                });
         }
+    });
+}
     });
 };
 
