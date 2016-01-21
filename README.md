@@ -1,6 +1,6 @@
 # admin-tool
 
-Ein Tool zum Import und zur Aufbereitung von Datensätzen und ihren Verbindungen.
+Ein Tool zum Import und zur Aufbereitung von Datensätzen und ihrer Verbindungen.
 
 ## Voraussetzungen:
 * Node.js und npm installiert (https://nodejs.org)
