@@ -9,7 +9,7 @@ Ein Tool zum Import und zur Aufbereitung von Datensätzen und ihren Verbindungen
   **Hinweis:**
 Frühere Versionen könnten klappen. Tritt beim Import ein Authentifizierungsproblem auf, kann dies darauf hinweisen, dass die Version zu alt ist.
 * Der Befehl mongoimport liegt im System-Pfad
-* Das Node-Modul *grunt* ist installiert
+* Das Node-Modul *grunt* ist installiert (http://gruntjs.com/)
 
 ## Installation:
 * Mit **git clone https://github.com/Data-City/admin-tool.git** die Dateien herunterladen
