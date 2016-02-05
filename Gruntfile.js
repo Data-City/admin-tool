@@ -304,7 +304,12 @@ module.exports = function (grunt) {
         }
         
         // Meta Daten aggregieren
-        grunt.task.run('metadata:' + collectionName);
+        if(connections_csv) {
+            grunt.task.run('metadata:' + collectionName + ":true");    
+        } else {
+            grunt.task.run('metadata:' + collectionName + ":false");    
+        }
+        
     });
     
     /**
@@ -312,7 +317,7 @@ module.exports = function (grunt) {
      * 
      * Erzeugt eine Aggregation der Meta-Daten einer Collection und speichert sie in einer Collection
      */
-    grunt.registerTask('metadata', 'Speichert Meta-Daten einer Collection', function (collectionName) {
+    grunt.registerTask('metadata', 'Speichert Meta-Daten einer Collection', function (collectionName, connectionsAvailable) {
         if (arguments.length === 0 || !collectionName) {
             grunt.log.error("Name der Collection fehlt!");
             return false;
@@ -391,11 +396,19 @@ module.exports = function (grunt) {
                                                     if (errorAggregation) {
                                                         console.error("Fehler beim Aggregieren");
                                                         console.error(errorAggregation);
-                                                        db.close();
                                                     } else {
                                                         grunt.log.writeln("Aggregation erfolgreich");
-                                                        db.close();
                                                     }
+                                                    //Info hinterlegen, ob Verbindungen vorhanden sind.
+                                                    db.collection(outputCollection, null, function (errorGetDB, maxminavg) {
+                                                        if (errorGetDB) {
+                                                            console.error("Fehler beim Holen von maxminavg");
+                                                            console.error(errorAggregation);
+                                                        } else {
+                                                            maxminavg.update({"_id" : 0},{$set:{"connectionsAvailable": connectionsAvailable}});
+                                                        }
+                                                    });
+                                                    db.close();
                                                 });
                                             }
                                         }
