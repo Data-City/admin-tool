@@ -8,7 +8,7 @@ Ein Tool zum Import und zur Aufbereitung von Datensätzen und ihrer Verbindungen
 
   **Hinweis:**
 Frühere Versionen könnten klappen. Tritt beim Import ein Authentifizierungsproblem auf, kann dies darauf hinweisen, dass die Version zu alt ist.
-* Der Befehl mongoimport liegt im System-Pfad
+* Der Befehl mongoimport liegt im System-Pfad - [Anleitung für Windows 7](https://github.com/Data-City/admin-tool/blob/master/Anleitung Systempfad Win 7.txt)
 * Das Node-Modul *grunt* ist installiert (http://gruntjs.com/)
 
 ## Installation:

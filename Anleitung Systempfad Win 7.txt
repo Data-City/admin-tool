@@ -1,0 +1,1 @@
+Unter Win 7: Rechtsklick auf Windows-Zeichen -> System -> Erweiterte Systemeinstellungen -> Erweitert -> Umgebungsvariablen -> im 2. Fenster "Systemvariablen" Doppelklick auf die Variable "Path"  -> Hier den Pfad zum bin-Order einfügen, getrennt mit einem Semikolon! z.B. ";C:\GitHub\WindowsPaket\datacity1.1\bin" ganz hinten
