@@ -26,7 +26,7 @@ importiert werden
 
 #### Datensaetze.csv
 Hierbei handelt es sich um den Namen einer CSV-Datei, die
-* durch Kommas getrennt ist
+* durch Kommata getrennt ist
 * in der ersten Zeile die Spaltennamen enthält
 * keine unötigen Leerzeilen enthält
 
@@ -41,6 +41,8 @@ Alexandro,Student,23,IT,8000
 Der Name der Collection, in die importiert werden soll. 
 * Existiert die Collection noch nicht, wird sie angelegt
 * Existiert sie, wird der bisherige Inhalt vor dem Import gelöscht
+
+**WICHTIG:** Keine Umlaute oder Sonderzeichen verwenden!
 
 #### Verbindungen.csv
 Grundsätzlich gelten die gleichen Regeln, wie für die Datei *Datensaetze.csv*. Ergänzend gilt:
