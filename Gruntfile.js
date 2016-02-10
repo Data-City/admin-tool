@@ -80,38 +80,6 @@ var prepareConnections = function (collectionName) {
                                         }
                                     }
                                 }, 
-
-                                /**sowas wie:
-                                var outs = [];
-                                                for (var conn in outgoingStages) {
-                                                    if (outs[0] !== '_') {
-                                                        outs.push(conn);
-                                                    }
-                                                }
-                                                
-                                                var stages = [{
-                                                    "$group": {}
-                                                }];
-                                                var ops = {
-                                                    "_id": 0,
-                                                };
-                                                outs.forEach(function (name) {
-
-                                                    var max = "max_" + name;
-                                                    var min = "min_" + name;
-                                                    var avg = "avg_" + name;
-
-                                                   ops[max] = {"$max": { "$cond": [{ "$eq": ["$" + name, ""] }, 0, "$" + name] }
-                                                    };
-                                                    ops[min] = {
-                                                       "$min": "$" + name
-                                                    };
-                                                    ops[avg] = {
-                                                        "$avg": "$" + name
-                                                    };
-                                                });
-                                    
-                                */
                                 {
                                     $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + OUTGOING_SUFFIX
                                 }
@@ -195,6 +163,7 @@ var prepareConnections = function (collectionName) {
                                             db.close();
                                         } else {
                                             console.log("Verbindungen (outgoing) erfolgreich aufbereitet!");
+											console.log("Der Datensatz wurde erfolgeich importiert!");
                                             db.close();
                                         }
                                     });
