@@ -66,6 +66,17 @@ var prepareConnections = function (collectionName) {
                                         },
                                         Gewichtung: {
                                             $sum: "$Gewichtung"
+                                        },
+                                         minimum: {
+                                        $min: "$Gewichtung"
+                                        },
+
+                                        maximum: {
+                                            $max: "$Gewichtung"
+                                        },
+
+                                        average: {
+                                            $avg: "$Gewichtung"
                                         }
                                     },
                                 }, {
@@ -75,7 +86,10 @@ var prepareConnections = function (collectionName) {
                                             $addToSet: {
                                                 Start: "$_id",
                                                 outgoingConnections: "$outgoingConnections",
-                                                Gewichtung: "$Gewichtung"
+                                                Gewichtung: "$Gewichtung",
+                                                minimum: "$minimum",
+                                                maximum: "$maximum",
+                                                average: "$average"
                                             }
                                         }
                                     }
@@ -97,7 +111,20 @@ var prepareConnections = function (collectionName) {
                                         },
                                         Gewichtung: {
                                             $sum: "$Gewichtung"
+                                        },
+
+                                        minimum: {
+                                        $min: "$Gewichtung"
+                                        },
+
+                                        maximum: {
+                                            $max: "$Gewichtung"
+                                        },
+
+                                        average: {
+                                            $avg: "$Gewichtung"
                                         }
+
                                     },
                                 }, {
                                     $group: {
@@ -106,43 +133,14 @@ var prepareConnections = function (collectionName) {
                                             $addToSet: {
                                                 Ziel: "$_id",
                                                 incomingConnections: "$incomingConnections",
-                                                Gewichtung: "$Gewichtung"
+                                                Gewichtung: "$Gewichtung",
+                                                minimum: "$minimum",
+                                                maximum: "$maximum",
+                                                average: "$average"
                                             }
                                         }
                                     }
                                 }, 
-                                /**sowas wie:
-                                var ins = [];
-                                                for (var conn in incomingStages) {
-                                                    if (ins[0] !== '_') {
-                                                        ins.push(conn);
-                                                    }
-                                                }
-                                                
-                                                var stages = [{
-                                                    "$group": {}
-                                                }];
-                                                var ops = {
-                                                    "_id": 0,
-                                                };
-                                                ins.forEach(function (name) {
-
-                                                    var max = "max_" + name;
-                                                    var min = "min_" + name;
-                                                    var avg = "avg_" + name;
-
-                                                   ops[max] = {"$max": { "$cond": [{ "$eq": ["$" + name, ""] }, 0, "$" + name] }
-                                                    };
-                                                    ops[min] = {
-                                                       "$min": "$" + name
-                                                    };
-                                                    ops[avg] = {
-                                                        "$avg": "$" + name
-                                                    };
-                                                });
-                                    
-                                */
-
                                 {
                                     $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + INCOMING_SUFFIX
                                 }
@@ -163,7 +161,7 @@ var prepareConnections = function (collectionName) {
                                             db.close();
                                         } else {
                                             console.log("Verbindungen (outgoing) erfolgreich aufbereitet!");
-											console.log("Der Datensatz wurde erfolgeich importiert!");
+                                            console.log("Der Datensatz wurde erfolgeich importiert!");
                                             db.close();
                                         }
                                     });
@@ -211,17 +209,17 @@ var importCsvFile = function (filename, collectionName) {
  
     //remove exitisting database
     var remove_admin_db_cmd = 'mongo ' + MONGO_AUTH_DB + ' --eval "db.dropDatabase()"';
-	var remove_einstellungen_db_cmd = 'mongo einstellungen --eval "db.dropDatabase()"';
-	var remove_prelife_db_cmd = 'mongo ' + DB + ' --eval "db.dropDatabase()"';
+    var remove_einstellungen_db_cmd = 'mongo einstellungen --eval "db.dropDatabase()"';
+    var remove_prelife_db_cmd = 'mongo ' + DB + ' --eval "db.dropDatabase()"';
     //create database 
     var add_users_data_cmd = 'mongo --eval "db.getSiblingDB('+ MONGO_AUTH_DB +').createUser({user: "mongoduser", pwd: "6cn7Hd8RGzrseqmB", roles:[{role :"readWrite", db: "local"},{role : "root", db : "admin"},{role : "readWrite",db : "production"},{role: "readWrite", db: "prelife"},{role: "readWrite", db: "admin"},{role: "userAdminAnyDatabase", db: "admin"}]})';
-	var add_ansichten_data_cmd = 'mongo --eval "db.getSiblingDB("einstellungen").createCollection(' + collectionName +', function(err, collection){collection.insert({"test":"value"});});'
-	
-	var remove_admin_db = shell.exec(remove_admin_db_cmd);
-	var remove_einstellungen_db = shell.exec(remove_einstellungen_db_cmd);
-	var remove_prelife_db = shell.exec(remove_prelife_db_cmd);
-	var add_users_data = shell.exec(add_users_data_cmd);
-	var add_ansichten_data = shell.exec(add_ansichten_data_cmd);
+    var add_ansichten_data_cmd = 'mongo --eval "db.getSiblingDB("einstellungen").createCollection(' + collectionName +', function(err, collection){collection.insert({"test":"value"});});'
+    
+    var remove_admin_db = shell.exec(remove_admin_db_cmd);
+    var remove_einstellungen_db = shell.exec(remove_einstellungen_db_cmd);
+    var remove_prelife_db = shell.exec(remove_prelife_db_cmd);
+    var add_users_data = shell.exec(add_users_data_cmd);
+    var add_ansichten_data = shell.exec(add_ansichten_data_cmd);
 }*/
 
 
@@ -232,9 +230,9 @@ module.exports = function (grunt) {
      * 
      * 
      *
-	grunt.registerTask('initDB', 'Initialisiert die Databank', function (collectionName) {
-       initDB(collectionName);		
-	});*/
+    grunt.registerTask('initDB', 'Initialisiert die Databank', function (collectionName) {
+       initDB(collectionName);      
+    });*/
     /**
      * Grunt Task: import
      * 
