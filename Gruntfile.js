@@ -350,6 +350,7 @@ grunt.registerTask('import', 'Importiert CSV-Dateien und bereitet sie auf', func
             ).then(function(result) {
               console.log(result);
               db.close();
+              resolve();
             });
           });
         });
@@ -375,7 +376,7 @@ grunt.registerTask('metadata', 'Speichert Meta-Daten einer Collection', function
 
     var connection = connect();
 
-    connection.then(function(db) {
+    connect().then(function(db) {
       getCollection(db, collectionName).then(function(collection) {
         findOne(collection).then(function(doc) {
           // Die Namen aller Attribute in attrs
@@ -423,7 +424,6 @@ grunt.registerTask('metadata', 'Speichert Meta-Daten einer Collection', function
             var p = getCollection(db, outputCollection);
             p.then(function(maxminavg) {
               maxminavg.update({"_id" : 0},{$set:{"connectionsAvailable": connectionsAvailable}});
-              maxminavg.update({"_id" : 0},{$set:{"nachUmbau": true}});
               db.close();
             });
           });
