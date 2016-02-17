@@ -68,7 +68,7 @@ var prepareConnections = function (collectionName) {
                                             $sum: "$Gewichtung"
                                         },
                                          minimum: {
-                                        $min: "$Gewichtung"
+                                            $min: "$Gewichtung"
                                         },
 
                                         maximum: {
@@ -91,7 +91,19 @@ var prepareConnections = function (collectionName) {
                                                 maximum: "$maximum",
                                                 average: "$average"
                                             }
+                                        },
+                                        minimumglobalout: {
+                                            $min: "$minimum"
+                                        },
+
+                                        maximumglobalout: {
+                                            $max: "$maximum"
+                                        },
+
+                                        averageglobalout: {
+                                            $avg: "$average"
                                         }
+
                                     }
                                 }, 
                                 {
@@ -138,6 +150,17 @@ var prepareConnections = function (collectionName) {
                                                 maximum: "$maximum",
                                                 average: "$average"
                                             }
+                                        },
+                                        minimumglobalinc: {
+                                            $min: "$minimum"
+                                        },
+
+                                        maximumglobalinc: {
+                                            $max: "$maximum"
+                                        },
+
+                                        averageglobalinc: {
+                                            $avg: "$average"
                                         }
                                     }
                                 }, 
@@ -238,7 +261,7 @@ module.exports = function (grunt) {
      * 
      * Importiert CSV-Dateien zur Darstellung der Häuser und Verbindungen, bereitet sie auf und sammelt Meta-Daten
      */
-    grunt.registerTask('import', 'Importiert CSV-Dateien und bereitet sie auf', function (data_csv, collectionName, connections_csv) {
+    grunt.registerTask('import', 'Importiert CSV-Dateien und bereitet sie auf', function (data_csv, collectionName, connections_csv, minimumglobalout, maximumglobalout, averageglobalout, averageglobalinc, maximumglobalinc, minimumglobalinc) {
         if (!data_csv || !collectionName) {
             grunt.log.error("Nötige Parameter fehlen! Aufruf mit");
             grunt.log.error("grunt import:Daten.csv:NameDerCollection:Verbindungen.csv");
@@ -263,21 +286,84 @@ module.exports = function (grunt) {
         // Datei importieren - Daten
         importCsvFile(data_csv, collectionName);
         
-        // Datei importieren - Verbindungsdaten
-        if (connections_csv) {
-            importCsvFile(connections_csv, collectionName + META_DATA_PART + TMP_CONNECTIONS_SUFFIX);
-            // Verbindungsdaten aufbereiten
-            prepareConnections(collectionName);
-        }
-        
         // Meta Daten aggregieren
         if(connections_csv) {
             grunt.task.run('metadata:' + collectionName + ":true");    
         } else {
             grunt.task.run('metadata:' + collectionName + ":false");    
         }
-        
-    });
+
+        // Datei importieren - Verbindungsdaten
+        if (connections_csv) {
+            importCsvFile(connections_csv, collectionName + META_DATA_PART + TMP_CONNECTIONS_SUFFIX);
+            // Verbindungsdaten aufbereiten
+            prepareConnections(collectionName);
+
+            var done = this.async();
+            MongoClient.connect(URL, function (err, db){
+                if (err) {
+                    grunt.log.error("Fehler bei Verbindungsaufbau:" + URL);
+                    grunt.log.error(err);
+                    db.close();
+                    } else {
+                    db.authenticate(MONGO_USER, MONGO_PASS, function (e) {
+                        if (err) {
+                            console.error("Fehler bei Authentifizierung:");
+                            console.error(e);
+                            db.close();
+                            } else {
+                                var incomingConnections;
+                                var outgoingConnections;
+                                var incomingcol = collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + INCOMING_SUFFIX
+                                db.collection(incomingcol, function(errorGetDB, collection)){
+                                    collection.findOne(function(err, doc)){
+                                        incomingConnections = doc;
+                                    }
+                                }
+                                var outgoingcol = collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + OUTGOING_SUFFIX
+                                db.collection(outgoingcol, function(errorGetDB, collection)){
+                                    collection.findOne(function(err, doc)){
+                                        outgoingConnections = doc;
+                                    }
+                                }
+                                console.log(outgoingConnections);
+                             db.collection(collectionName, null, function (errorGetDB, collection) {
+                                if (errorGetDB) {
+                                    console.error("Fehler beim Holen der Datenbank " + collectionName);
+                                    console.error(errorGetDB);
+                                    db.close();
+                                } else {
+                                    collection.findOne({}, {}, function (errorGetDoc, doc) {
+                                        if (errorGetDoc) {
+                                            console.error("Fehler beim Holen eines Dokuments");
+                                            console.error(errorGetDoc);
+                                            db.close();
+                                        } else {
+                                            if (!doc) {
+                                                console.error("Keine Dokumente in Collection gefunden!");
+                                                console.error(errorGetDoc);
+                                                db.close();
+                                                return;
+                                            } else {
+                                                var metaDataCollection = collectionName + META_DATA_PART + META_DATA_AGGR_URI;
+                                                console.log(doc);
+                                                db.collection(metaDataCollection, null, function (errorGetDB, collection) {
+                                                var result = collection.update(
+                                                    {"_id" : 0},{
+                                                        $set:{"minimumglobalout":minimumglobalout, "maximumglobalout": maximumglobalout, "averageglobalout": averageglobalout,
+                                                              "minimumglobalinc":minimumglobalinc, "maximumglobalinc": maximumglobalinc, "averageglobalinc": averageglobalinc
+                                                        }
+                                                    }
+                                                );
+                                                 db.close();  
+                                
+                                
+                                                });
+                                            }
+                                    }});
+                                }});
+                        }});
+                }
     
     /**
      * Grunt Task: metadata
