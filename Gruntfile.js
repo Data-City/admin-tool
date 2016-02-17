@@ -302,13 +302,13 @@ grunt.registerTask('import', 'Importiert CSV-Dateien und bereitet sie auf', func
     var done = this.async();
 
 
-    connection.then(function(db) {
+    connect().then(function(db) {
       // Darin werden die Verbindungsdaten gespeichert
       var incomingConnections = new Promise(function(resolve, reject) {
         var col = collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + INCOMING_SUFFIX;
         getCollection(db, col).then(function(collection) {
           findOne(collection).then(function (doc) {
-            incomingConnections = doc;
+            resolve(doc);
           });
         });
       });
@@ -317,8 +317,8 @@ grunt.registerTask('import', 'Importiert CSV-Dateien und bereitet sie auf', func
         var col = collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + OUTGOING_SUFFIX;
         getCollection(db, col).then(function(collection) {
           findOne(collection).then(function (doc) {
-            outgoingConnections = doc;
-            console.log(outgoingConnections);
+            resolve(doc);
+            
           });
         });
       });
@@ -331,29 +331,25 @@ grunt.registerTask('import', 'Importiert CSV-Dateien und bereitet sie auf', func
         console.log("Outgoing:");
         console.log(outgoingConnections);
 
-        getCollection(db, collectionName).then(function(collection) {
-          findOne(collection).then(function(doc) {
+       
             var metaDataCollection = collectionName + META_DATA_PART + META_DATA_AGGR_URI;
 
             getCollection(db, metaDataCollection).then(function(metaData) {
-              metaData.update({"_id" : 0},{
+             var r = metaData.update({"_id" : 0},{
                 $set: {
-                  "minimumglobalout":minimumglobalout,
+                  "minimumglobalout": minimumglobalout,
                   "maximumglobalout": maximumglobalout,
                   "averageglobalout": averageglobalout,
-                  "minimumglobalinc":minimumglobalinc,
+                  "minimumglobalinc": minimumglobalinc,
                   "maximumglobalinc": maximumglobalinc,
                   "averageglobalinc": averageglobalinc,
-                  "An Julia": "Gruesse von Steffen :-P"
+                  //"An Julia": "Gruesse von Steffen :-P"
                 }
               }
-            ).then(function(result) {
-              console.log(result);
-              db.close();
-              resolve();
-            });
-          });
-        });
+            );
+             console.log(r);
+         
+        
       });
     });
 
