@@ -4,12 +4,13 @@
   "description": "this admin-tool should allow import, aggregating meta data etc",
   "main": "Gruntfile.js",
   "dependencies": {
+    "async": "^1.5.2",
     "grunt": "^0.4.5",
     "mongodb": "^2.1.4",
+    "serial-loop": "0.0.1",
     "shelljs": "^0.5.3"
   },
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
