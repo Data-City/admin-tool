@@ -230,36 +230,32 @@ var importCsvFile = function (filename, collectionName) {
 }
 
 /**
-* Initialisierung der Datenbank
-*
-var initDB = function (collectionName) {
-
-//remove exitisting database
-var remove_admin_db_cmd = 'mongo ' + MONGO_AUTH_DB + ' --eval "db.dropDatabase()"';
-var remove_einstellungen_db_cmd = 'mongo einstellungen --eval "db.dropDatabase()"';
-var remove_prelife_db_cmd = 'mongo ' + DB + ' --eval "db.dropDatabase()"';
-//create database
-var add_users_data_cmd = 'mongo --eval "db.getSiblingDB('+ MONGO_AUTH_DB +').createUser({user: "mongoduser", pwd: "6cn7Hd8RGzrseqmB", roles:[{role :"readWrite", db: "local"},{role : "root", db : "admin"},{role : "readWrite",db : "production"},{role: "readWrite", db: "prelife"},{role: "readWrite", db: "admin"},{role: "userAdminAnyDatabase", db: "admin"}]})';
-var add_ansichten_data_cmd = 'mongo --eval "db.getSiblingDB("einstellungen").createCollection(' + collectionName +', function(err, collection){collection.insert({"test":"value"});});'
-
-var remove_admin_db = shell.exec(remove_admin_db_cmd);
-var remove_einstellungen_db = shell.exec(remove_einstellungen_db_cmd);
-var remove_prelife_db = shell.exec(remove_prelife_db_cmd);
-var add_users_data = shell.exec(add_users_data_cmd);
-var add_ansichten_data = shell.exec(add_ansichten_data_cmd);
-}*/
+ * Initialisierung der Datenbank
+ */
+ var initDB = function () {
+    //remove exitisting database
+	var remove_einstellungen_db_cmd = 'mongo einstellungen --eval db.dropDatabase()';
+	var remove_production_db_cmd = 'mongo ' + DB + ' --eval db.dropDatabase()';
+	//add new anscihten collection in einstellungen
+	var add_ansichten_data_cmd = 'mongo einstellungen --eval db.createCollection(\'ansichten\')';
+   
+	var remove_einstellungen_db = shell.exec(remove_einstellungen_db_cmd);
+	var remove_production_db = shell.exec(remove_production_db_cmd);
+	var add_ansichten_data = shell.exec(add_ansichten_data_cmd);
+ }
 
 
 
 module.exports = function (grunt) {
     /**
-    * Grunt Task: initDB
-    *
-    *
-    *
-    grunt.registerTask('initDB', 'Initialisiert die Databank', function (collectionName) {
-    initDB(collectionName);
-  });*/
+     * Grunt Task: initDB
+     * 
+     * Die "production" und "einstellungen" Datenbanken wurden geloescht und eine "einstellungen" Datenbank mit "ansichten" Collection wurde erzeugt
+     */
+	grunt.registerTask('initDB', 'Initialisiert die Databank', function () {
+       initDB();		  
+	});
+	
     /**
     * Grunt Task: import
     *
