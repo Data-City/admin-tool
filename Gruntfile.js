@@ -232,17 +232,17 @@ var importCsvFile = function (filename, collectionName) {
 /**
  * Initialisierung der Datenbank
  */
- var initDB = function () {
+var initDB = function () {
     //remove exitisting database
-	var remove_einstellungen_db_cmd = 'mongo einstellungen --eval db.dropDatabase()';
-	var remove_production_db_cmd = 'mongo ' + DB + ' --eval db.dropDatabase()';
-	//add new anscihten collection in einstellungen
-	var add_ansichten_data_cmd = 'mongo einstellungen --eval db.createCollection(\'ansichten\')';
-   
-	var remove_einstellungen_db = shell.exec(remove_einstellungen_db_cmd);
-	var remove_production_db = shell.exec(remove_production_db_cmd);
-	var add_ansichten_data = shell.exec(add_ansichten_data_cmd);
- }
+    var remove_einstellungen_db_cmd = 'mongo einstellungen --eval db.dropDatabase()';
+    var remove_production_db_cmd = 'mongo ' + DB + ' --eval db.dropDatabase()';
+    //add new anscihten collection in einstellungen
+    var add_ansichten_data_cmd = 'mongo einstellungen --eval db.createCollection(\'ansichten\')';
+
+    var remove_einstellungen_db = shell.exec(remove_einstellungen_db_cmd);
+    var remove_production_db = shell.exec(remove_production_db_cmd);
+    var add_ansichten_data = shell.exec(add_ansichten_data_cmd);
+}
 
 
 
@@ -252,9 +252,9 @@ module.exports = function (grunt) {
      * 
      * Die "production" und "einstellungen" Datenbanken wurden geloescht und eine "einstellungen" Datenbank mit "ansichten" Collection wurde erzeugt
      */
-	grunt.registerTask('initDB', 'Initialisiert die Databank', function () {
-       initDB();		  
-	});
+    grunt.registerTask('initDB', 'Initialisiert die Databank', function () {
+        initDB();
+    });
 	
     /**
     * Grunt Task: import
@@ -401,24 +401,17 @@ module.exports = function (grunt) {
     grunt.registerTask('watch', 'Verfolgt Veränderungen an relevanten Collections und aktualisiert Meta-Daten', function () {
         var done = this.async();
 
-
-
-        /*
-        setInterval(function() {
-        console.log("Hello");
-      }, 1000);
-      */
         var cols = {};
         connect().then(function (db) {
             async.forever(function (next) {
-                setTimeout(function() {
+                setTimeout(function () {
                     checkDataCols(db, grunt, cols)
-                    .then(function (newColsList) {
-                        cols = newColsList;
-                        next();
-                    }, function (err) {
-                        console.error(err);
-                    });
+                        .then(function (newColsList) {
+                            cols = newColsList;
+                            next();
+                        }, function (err) {
+                            console.error(err);
+                        });
                 }, WATCHER_TIMEOUT);
             });
         });
@@ -498,7 +491,7 @@ function checkCol(db, collectionName, watchedCols, grunt) {
                             resolve(watchedCols);
                         }
                     });
-                }, function(err) {
+                }, function (err) {
                     reject(err);
                 });
             });
@@ -612,9 +605,12 @@ function metaDataHelper(db, collectionName, connectionsAvailable) {
                     } else {
                         if (!doc) {
                             console.error("Keine Dokumente in Collection gefunden!");
+                            /*
                             console.error(errorGetDoc);
                             db.close();
                             return;
+                            */
+                            resolve();
                         } else {
                             // Die Namen aller Attribute in attrs
                             var attrs = [];
