@@ -32,6 +32,139 @@ var MongoClient = require('mongodb').MongoClient
 var URL = 'mongodb://' + MONGO_HOST + ':' + MONGO_PORT + '/' + DB;
 
 
+
+function prepareConnectionsHelper(connections_tmp, collectionName) {
+    return new Promise(function (resolve, reject) {
+        // Stages definieren
+        var outgoingStages = [
+            {
+                $group: {
+                    _id: "$Start",
+                    outgoingConnections: {
+                        $addToSet: {
+                            Ziel: "$Ziel",
+                            Gewichtung: "$Gewichtung"
+                        }
+                    },
+                    Gewichtung: {
+                        $sum: "$Gewichtung"
+                    },
+                    minimum: {
+                        $min: "$Gewichtung"
+                    },
+
+                    maximum: {
+                        $max: "$Gewichtung"
+                    },
+
+                    average: {
+                        $avg: "$Gewichtung"
+                    }
+                },
+            }, {
+                $group: {
+                    _id: "Outgoing Connections",
+                    connections: {
+                        $addToSet: {
+                            Start: "$_id",
+                            outgoingConnections: "$outgoingConnections",
+                            Gewichtung: "$Gewichtung",
+                            minimum: "$minimum",
+                            maximum: "$maximum",
+                            average: "$average"
+                        }
+                    },
+                    minimumglobalout: {
+                        $min: "$minimum"
+                    },
+
+                    maximumglobalout: {
+                        $max: "$maximum"
+                    },
+
+                    averageglobalout: {
+                        $avg: "$average"
+                    }
+
+                }
+            },
+            {
+                $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + OUTGOING_SUFFIX
+            }
+        ];
+
+        var incomingStages = [
+            {
+                $group: {
+                    _id: "$Ziel",
+                    incomingConnections: {
+                        $addToSet: {
+                            Start: "$Start",
+                            Gewichtung: "$Gewichtung"
+                        }
+                    },
+                    Gewichtung: {
+                        $sum: "$Gewichtung"
+                    },
+
+                    minimum: {
+                        $min: "$Gewichtung"
+                    },
+
+                    maximum: {
+                        $max: "$Gewichtung"
+                    },
+
+                    average: {
+                        $avg: "$Gewichtung"
+                    }
+
+                },
+            }, {
+                $group: {
+                    _id: "Incoming Connections",
+                    connections: {
+                        $addToSet: {
+                            Ziel: "$_id",
+                            incomingConnections: "$incomingConnections",
+                            Gewichtung: "$Gewichtung",
+                            minimum: "$minimum",
+                            maximum: "$maximum",
+                            average: "$average"
+                        }
+                    },
+                    minimumglobalinc: {
+                        $min: "$minimum"
+                    },
+
+                    maximumglobalinc: {
+                        $max: "$maximum"
+                    },
+
+                    averageglobalinc: {
+                        $avg: "$average"
+                    }
+                }
+            },
+            {
+                $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + INCOMING_SUFFIX
+            }
+        ];
+
+        // Aggregation ausführen
+        aggregate(connections_tmp, incomingStages).then(
+            function () {
+                aggregate(connections_tmp, outgoingStages).then(
+                    function () {
+                        console.log("Verbindungen für " + collectionName + " erfolgreich aufbereitet!");
+                        resolve();
+                    }
+                    );
+            }
+            );
+    });
+}
+
 /**
 * Bereitet temporäre Verbindungsdaten auf
 *
@@ -39,166 +172,15 @@ var URL = 'mongodb://' + MONGO_HOST + ':' + MONGO_PORT + '/' + DB;
 * Dokumenten umgangen wird
 */
 var prepareConnections = function (collectionName) {
-    MongoClient.connect(URL, function (err, db) {
-        if (err) {
-            console.error("Fehler bei Verbindungsaufbau:" + URL);
-            console.error(err);
-            db.close();
-        } else {
-            db.authenticate(MONGO_USER, MONGO_PASS, function (e) {
-                if (err) {
-                    console.error("Fehler bei Authentifizierung:");
-                    console.error(e);
+    connect.then(function (db) {
+        var colName = collectionName + META_DATA_PART + TMP_CONNECTIONS_SUFFIX;
+        getCollection(db, colName).then(function (collection) {
+            prepareConnectionsHelper(collection, collectionName).then(
+                function () {
                     db.close();
-                } else {
-                    db.collection(collectionName + META_DATA_PART + TMP_CONNECTIONS_SUFFIX, null, function (errorGetDB, collection) {
-                        if (errorGetDB) {
-                            console.error("Fehler beim Holen der Datenbank " + collectionName);
-                            console.error(errorGetDB);
-                            db.close();
-                        } else {
-                            // Stages definieren
-                            var outgoingStages = [
-                                {
-                                    $group: {
-                                        _id: "$Start",
-                                        outgoingConnections: {
-                                            $addToSet: {
-                                                Ziel: "$Ziel",
-                                                Gewichtung: "$Gewichtung"
-                                            }
-                                        },
-                                        Gewichtung: {
-                                            $sum: "$Gewichtung"
-                                        },
-                                        minimum: {
-                                            $min: "$Gewichtung"
-                                        },
-
-                                        maximum: {
-                                            $max: "$Gewichtung"
-                                        },
-
-                                        average: {
-                                            $avg: "$Gewichtung"
-                                        }
-                                    },
-                                }, {
-                                    $group: {
-                                        _id: "Outgoing Connections",
-                                        connections: {
-                                            $addToSet: {
-                                                Start: "$_id",
-                                                outgoingConnections: "$outgoingConnections",
-                                                Gewichtung: "$Gewichtung",
-                                                minimum: "$minimum",
-                                                maximum: "$maximum",
-                                                average: "$average"
-                                            }
-                                        },
-                                        minimumglobalout: {
-                                            $min: "$minimum"
-                                        },
-
-                                        maximumglobalout: {
-                                            $max: "$maximum"
-                                        },
-
-                                        averageglobalout: {
-                                            $avg: "$average"
-                                        }
-
-                                    }
-                                },
-                                {
-                                    $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + OUTGOING_SUFFIX
-                                }
-                            ];
-
-                            var incomingStages = [
-                                {
-                                    $group: {
-                                        _id: "$Ziel",
-                                        incomingConnections: {
-                                            $addToSet: {
-                                                Start: "$Start",
-                                                Gewichtung: "$Gewichtung"
-                                            }
-                                        },
-                                        Gewichtung: {
-                                            $sum: "$Gewichtung"
-                                        },
-
-                                        minimum: {
-                                            $min: "$Gewichtung"
-                                        },
-
-                                        maximum: {
-                                            $max: "$Gewichtung"
-                                        },
-
-                                        average: {
-                                            $avg: "$Gewichtung"
-                                        }
-
-                                    },
-                                }, {
-                                    $group: {
-                                        _id: "Incoming Connections",
-                                        connections: {
-                                            $addToSet: {
-                                                Ziel: "$_id",
-                                                incomingConnections: "$incomingConnections",
-                                                Gewichtung: "$Gewichtung",
-                                                minimum: "$minimum",
-                                                maximum: "$maximum",
-                                                average: "$average"
-                                            }
-                                        },
-                                        minimumglobalinc: {
-                                            $min: "$minimum"
-                                        },
-
-                                        maximumglobalinc: {
-                                            $max: "$maximum"
-                                        },
-
-                                        averageglobalinc: {
-                                            $avg: "$average"
-                                        }
-                                    }
-                                },
-                                {
-                                    $out: collectionName + META_DATA_PART + CONNECTIONS_SUFFIX + INCOMING_SUFFIX
-                                }
-                            ];
-
-                            // Aggregation ausführen
-                            collection.aggregate(incomingStages, function (errorAggregation, result) {
-                                if (errorAggregation) {
-                                    console.error("Fehler beim Aggregieren der Verbindungsdaten (incoming)");
-                                    console.error(errorAggregation);
-                                    db.close();
-                                } else {
-                                    console.log("Verbindungen (incoming) erfolgreich aufbereitet!");
-                                    collection.aggregate(outgoingStages, function (errorAggregation, result) {
-                                        if (errorAggregation) {
-                                            console.error("Fehler beim Aggregieren der Verbindungsdaten (outgoing)");
-                                            console.error(errorAggregation);
-                                            db.close();
-                                        } else {
-                                            console.log("Verbindungen (outgoing) erfolgreich aufbereitet!");
-                                            console.log("Der Datensatz wurde erfolgeich importiert!");
-                                            db.close();
-                                        }
-                                    });
-                                }
-                            });
-                        }
-                    });
                 }
-            });
-        }
+                );
+        });
     });
 };
 
@@ -402,13 +384,20 @@ module.exports = function (grunt) {
         var done = this.async();
 
         var cols = {};
+        var connectionCols = {};
         connect().then(function (db) {
+
+
             async.forever(function (next) {
                 setTimeout(function () {
                     checkDataCols(db, grunt, cols)
                         .then(function (newColsList) {
                             cols = newColsList;
-                            next();
+                            checkConnectionCols(db, connectionCols).then(
+                                function (newConnCols) {
+                                    connectionCols = newConnCols;
+                                    next();
+                                });
                         }, function (err) {
                             console.error(err);
                         });
@@ -418,7 +407,77 @@ module.exports = function (grunt) {
     });
 };
 
+function checkConnectionCols(db, oldConnCols) {
+    return new Promise(function (resolve, reject) {
+        console.log(">>>Prüfe Verbindungsdaten...")
+        //console.log(oldDataCols);
+        // Alles Collections außer mit _dc_ ODER _properties ODER system.indexes
+        var regexp = META_DATA_PART + TMP_CONNECTIONS_SUFFIX + '$';
+        getListOfCollections(db, { name: { '$regex': regexp, '$options': 'i' } })
+            .then(function (cols) {
+                var length = cols.length;
+                var watchedCols = oldConnCols;
+                var i = 1;
 
+                async.eachSeries(cols, function iteratee(item, callback) {
+                    console.log("[" + i + '/' + length + "] " + item.name);
+                    checkConnCol(db, item.name, watchedCols)
+                        .then(function (newWatchedCols) {
+                            watchedCols = newWatchedCols;
+                            i++;
+                            callback();
+                        });
+                }, function done() {
+                    resolve(watchedCols);
+                });
+            }, function (err) {
+                reject(err);
+            });
+    });
+}
+
+function checkConnCol(db, collectionName, watchedCols) {
+    return new Promise(function (resolve, reject) {
+                
+        // Collection holen
+        getCollection(db, collectionName).then(function (collection) {
+            // Anzahl Einträge holen
+            countCollection(collection).then(function (count) {
+                //
+                // Aktualisierungslogik
+                //
+                var change = false;
+                // Collection bereits erfasst?
+                if (watchedCols[collectionName]) {
+                    // Hat sich die Anzahl der Einträge verändert?
+                    if (count != watchedCols[collectionName]) {
+                        console.log(collectionName + ': ' + watchedCols[collectionName] + ' Einträge => ' + count + ' Einträge');
+                        change = true;
+                    }
+                }
+                // => neue Collection
+                else {
+                    console.log("Neue Collection gefunden: " + collectionName);
+                    change = true;
+                }
+                // Collections in Akkumulator aufnehmen
+                watchedCols[collectionName] = count;
+                //console.log(watchedCols);
+                var suffix = META_DATA_PART + TMP_CONNECTIONS_SUFFIX;
+                var dataColName = collectionName.slice(0, -1 * suffix.length);
+                if (change) {
+                    prepareConnectionsHelper(collection, dataColName).then(function () {
+                        resolve(watchedCols);
+                    });
+                } else {
+                    resolve(watchedCols);
+                }
+            });
+        }, function (err) {
+            reject(err);
+        });
+    });
+}
 
 function checkDataCols(db, grunt, oldDataCols) {
     return new Promise(function (resolve, reject) {
