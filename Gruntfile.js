@@ -21,7 +21,7 @@ var META_DATA_AGGR_URI = "maxminavg";
 var META_DATA_PART = "_dc_";
 
 // Zeit zwischen zwei Scans in ms
-var WATCHER_TIMEOUT = 4000;
+var WATCHER_TIMEOUT = 1000;
 
 // Ab hier sollte definitiv nichts mehr angepasst werden
 var MongoClient = require('mongodb').MongoClient
@@ -484,7 +484,7 @@ function checkDataCols(db, grunt, oldDataCols) {
         console.log(">>>Prüfe Daten...")
         //console.log(oldDataCols);
         // Alles Collections außer mit _dc_ ODER _properties ODER system.indexes
-        getListOfCollections(db, { name: { $not: /\_dc\_|\_properties|system.indexes/ } })
+        getListOfCollections(db, { name: { $not: /\_dc\_|\_properties|system.indexes|agg\_out/ } })
             .then(function (cols) {
                 var length = cols.length;
                 var watchedCols = oldDataCols;
