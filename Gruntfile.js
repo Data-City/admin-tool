@@ -172,7 +172,7 @@ function prepareConnectionsHelper(connections_tmp, collectionName) {
 * Dokumenten umgangen wird
 */
 var prepareConnections = function (collectionName) {
-    connect.then(function (db) {
+    connect().then(function (db) {
         var colName = collectionName + META_DATA_PART + TMP_CONNECTIONS_SUFFIX;
         getCollection(db, colName).then(function (collection) {
             prepareConnectionsHelper(collection, collectionName).then(
